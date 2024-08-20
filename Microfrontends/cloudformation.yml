@@ -1,0 +1,522 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Parameters:
+  AppName:
+    Type: String
+    Default: "Multirepo"
+    Description: "Application Identifier"
+  AppNameLower:
+    Type: String
+    Default: "multirepo"
+    Description: "Application Identifier (Lowercase)"  
+  Sid:
+    Type: String
+    Default: "NV"
+    Description: "Application Identifier"
+  SidLower:
+    Type: String
+    Default: "nv"
+    Description: "Application Identifier (Lowercase)"    
+  Env:
+    Type: String
+    Default: "DEV"
+    Description: "Environment Uppercase"
+    AllowedValues:
+      - DEV
+      - QA
+      - PRD
+  Branch:
+    Type: String
+    Default: "dev"
+    Description: "Branch"
+    AllowedValues:
+      - dev
+      - qa
+      - prd      
+  BucketName:
+    Type: String
+    Default: "bucket"
+    Description: "Bucket Name"
+  CodeBuildName:
+    Type: String
+    Default: "CB"
+    Description: "Bucket Name"
+  GitUser:
+    Type: String
+    Default: "nelsonvalverdelt"
+    Description: "User Git"
+  GitDomain:
+    Type: String
+    Default: "https://github.com/nelsonvalverde"
+    Description: "Domain Git"
+  GitToken:
+    Type: String
+    Default: "ghp..." 
+    Description: "<Personal Access token>"
+  MultirepoShellName:
+    Type: String
+    Default: "Shell00"
+    Description: "Shell Project name"
+  MultirepoShellNameLower:
+    Type: String
+    Default: "shell00"
+    Description: "Shell project name (Lowercase)"    
+  MultirepoShellRepo:
+    Type: String
+    Default: "base-template-multirepo-shell.git"
+    Description: "Git Shell Url"
+  MultiRepoMicroFrontAuthName:
+    Type: String
+    Default: "Auth01"
+    Description: "Auth microfontend Project name"
+  MultiRepoMicroFrontAuthNameLower:
+    Type: String
+    Default: "auth01"
+    Description: "Auth microfontend Project name (Lowercase)"    
+  MultiRepoMicroFrontAuthRepo:
+    Type: String
+    Default: "base-template-multirepo-mf-auth.git"
+    Description: "Url Git for auth microfontend"
+  MultiRepoMicroFrontDashboardName:
+    Type: String
+    Default: "Dashboard02"
+    Description: "Dashboard microfontend Project name"
+  MultiRepoMicroFrontDashboardNameLower:
+    Type: String
+    Default: "dashboard02"
+    Description: "Dashboard microfontend Project name (Lowercase)"    
+  MultiRepoMicroFrontDashboardRepo:
+    Type: String
+    Default: "base-template-multirepo-mf-dashboard.git"
+    Description: "Url Git for dashboard microfontend"
+  MultiRepoMicroFrontProductsName:
+    Type: String
+    Default: "Products03"
+    Description: "Products microfontend Project name"
+  MultiRepoMicroFrontProductsNameLower:
+    Type: String
+    Default: "products03"
+    Description: "Products microfontend Project name (Lowercase)"    
+  MultiRepoMicroFrontProductsRepo:
+    Type: String
+    Default: "base-template-multirepo-mf-products.git"
+    Description: "Url Git for products microfontend"
+  MultiRepoMicroFrontOrdersName:
+    Type: String
+    Default: "Orders04"
+    Description: "Orders microfontend Project name"
+  MultiRepoMicroFrontOrdersNameLower:
+    Type: String
+    Default: "orders04"
+    Description: "Orders microfontend Project name"    
+  MultiRepoMicroFrontOrdersRepo:
+    Type: String
+    Default: "base-template-multirepo-mf-orders.git"
+    Description: "Url Git for orders microfontend"
+
+Resources:
+  # Roles
+  CodeBuildRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: codebuild.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: CodeBuildMultiRepoPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:PutObject
+                  - s3:GetObject
+                  - s3:GetObjectVersion
+                  - s3:GetBucketAcl
+                  - s3:GetBucketLocation
+                Resource: "*"
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: "*"
+  CodePipelineRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: codepipeline.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: CodePipelineMultiRepoPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - codebuild:StartBuild
+                  - codebuild:StopBuild
+                  - codebuild:BatchGetBuilds
+                Resource: "*"
+              - Effect: Allow
+                Action:
+                  - cloudwatch:PutMetricData
+                Resource: "*"
+
+  # CodeBuild Projects
+  MultiRepoShellCodeBuild:
+    Type: AWS::CodeBuild::Project
+    Properties:
+      Name: !Sub "${Sid}-${Env}-${CodeBuildName}-${AppName}-${MultirepoShellName}"
+      Source:
+        Type: CODEPIPELINE
+      Artifacts:
+        Type: CODEPIPELINE
+      Environment:
+        ComputeType: BUILD_GENERAL1_SMALL
+        Image: aws/codebuild/standard:5.0
+        Type: LINUX_CONTAINER
+      ServiceRole: !GetAtt CodeBuildRole.Arn
+  MultiRepoMicroFrontAuthCodeBuild:
+    Type: AWS::CodeBuild::Project
+    Properties:
+      Name: !Sub "${Sid}-${Env}-${CodeBuildName}-${AppName}-MicroFront-${MultiRepoMicroFrontAuthName}"
+      Source:
+        Type: CODEPIPELINE
+      Artifacts:
+        Type: CODEPIPELINE
+      Environment:
+        ComputeType: BUILD_GENERAL1_SMALL
+        Image: aws/codebuild/standard:5.0
+        Type: LINUX_CONTAINER
+      ServiceRole: !GetAtt CodeBuildRole.Arn
+  MultiRepoMicroFrontDashboardCodeBuild:
+    Type: AWS::CodeBuild::Project
+    Properties:
+      Name: !Sub "${Sid}-${Env}-${CodeBuildName}-${AppName}-MicroFront-${MultiRepoMicroFrontDashboardName}"
+      Source:
+        Type: CODEPIPELINE
+      Artifacts:
+        Type: CODEPIPELINE
+      Environment:
+        ComputeType: BUILD_GENERAL1_SMALL
+        Image: aws/codebuild/standard:5.0
+        Type: LINUX_CONTAINER
+      ServiceRole: !GetAtt CodeBuildRole.Arn
+  MultiRepoMicroFrontProductsCodeBuild:
+    Type: AWS::CodeBuild::Project
+    Properties:
+      Name: !Sub "${Sid}-${Env}-${CodeBuildName}-${AppName}-MicroFront-${MultiRepoMicroFrontProductsName}"
+      Source:
+        Type: CODEPIPELINE
+      Artifacts:
+        Type: CODEPIPELINE
+      Environment:
+        ComputeType: BUILD_GENERAL1_SMALL
+        Image: aws/codebuild/standard:5.0
+        Type: LINUX_CONTAINER
+      ServiceRole: !GetAtt CodeBuildRole.Arn
+  MultiRepoMicroFrontOrdersCodeBuild:
+    Type: AWS::CodeBuild::Project
+    Properties:
+      Name: !Sub "${Sid}-${Env}-${CodeBuildName}-${AppName}-MicroFront-${MultiRepoMicroFrontOrdersName}"
+      Source:
+        Type: CODEPIPELINE
+      Artifacts:
+        Type: CODEPIPELINE
+      Environment:
+        ComputeType: BUILD_GENERAL1_SMALL
+        Image: aws/codebuild/standard:5.0
+        Type: LINUX_CONTAINER
+      ServiceRole: !GetAtt CodeBuildRole.Arn
+
+  # Pipelines Projects
+  MultiRepoShellCodePipeline:
+    Type: AWS::CodePipeline::Pipeline
+    Properties:
+      RoleArn: !GetAtt CodePipelineRole.Arn
+      Stages:
+        - Name: Source
+          Actions:
+            - Name: SourceAction
+              ActionTypeId:
+                Category: Source
+                Owner: ThirdParty
+                Provider: GitHub
+                Version: "1"
+              OutputArtifacts:
+                - Name: SourceOutput
+              Configuration:
+                Owner: !Ref GitUser
+                Repo: !Sub "${GitDomain}/${MultirepoShellRepo}"
+                Branch: !Ref Branch
+                OAuthToken: !Ref GitToken                
+        - Name: Build
+          Actions:
+            - Name: BuildAction
+              ActionTypeId:
+                Category: Build
+                Owner: AWS
+                Provider: CodeBuild
+                Version: "1"
+              InputArtifacts:
+                - Name: SourceOutput
+              OutputArtifacts:
+                - Name: BuildOutput
+              Configuration:
+                ProjectName: !Ref MultiRepoShellCodeBuild                
+      ArtifactStore:
+        Type: S3
+        Location: !Ref MultiRepoShellBucket
+  MultiRepoMicroFrontAuthCodePipeline:
+    Type: AWS::CodePipeline::Pipeline
+    Properties:
+      RoleArn: !GetAtt CodePipelineRole.Arn
+      Stages:
+        - Name: Source
+          Actions:
+            - Name: SourceAction
+              ActionTypeId:
+                Category: Source
+                Owner: ThirdParty
+                Provider: GitHub
+                Version: "1"
+              OutputArtifacts:
+                - Name: SourceOutput
+              Configuration:
+                Owner: !Ref GitUser
+                Repo: !Sub "${GitDomain}/${MultiRepoMicroFrontAuthRepo}"
+                Branch: !Ref Branch
+                OAuthToken: !Ref GitToken                
+        - Name: Build
+          Actions:
+            - Name: BuildAction
+              ActionTypeId:
+                Category: Build
+                Owner: AWS
+                Provider: CodeBuild
+                Version: "1"
+              InputArtifacts:
+                - Name: SourceOutput
+              OutputArtifacts:
+                - Name: BuildOutput
+              Configuration:
+                ProjectName: !Ref MultiRepoMicroFrontAuthCodeBuild                
+      ArtifactStore:
+        Type: S3
+        Location: !Ref MultiRepoMicroFrontAuthBucket
+  MultiRepoMicroFrontDashboardCodePipeline:
+    Type: AWS::CodePipeline::Pipeline
+    Properties:
+      RoleArn: !GetAtt CodePipelineRole.Arn
+      Stages:
+        - Name: Source
+          Actions:
+            - Name: SourceAction
+              ActionTypeId:
+                Category: Source
+                Owner: ThirdParty
+                Provider: GitHub
+                Version: "1"
+              OutputArtifacts:
+                - Name: SourceOutput
+              Configuration:
+                Owner: !Ref GitUser
+                Repo: !Sub "${GitDomain}/${MultiRepoMicroFrontDashboardRepo}"
+                Branch: !Ref Branch
+                OAuthToken: !Ref GitToken                
+        - Name: Build
+          Actions:
+            - Name: BuildAction
+              ActionTypeId:
+                Category: Build
+                Owner: AWS
+                Provider: CodeBuild
+                Version: "1"
+              InputArtifacts:
+                - Name: SourceOutput
+              OutputArtifacts:
+                - Name: BuildOutput
+              Configuration:
+                ProjectName: !Ref MultiRepoMicroFrontDashboardCodeBuild                
+      ArtifactStore:
+        Type: S3
+        Location: !Ref MultiRepoMicroFrontDashboardBucket
+  MultiRepoMicroFrontProductsCodePipeline:
+    Type: AWS::CodePipeline::Pipeline
+    Properties:
+      RoleArn: !GetAtt CodePipelineRole.Arn
+      Stages:
+        - Name: Source
+          Actions:
+            - Name: SourceAction
+              ActionTypeId:
+                Category: Source
+                Owner: ThirdParty
+                Provider: GitHub
+                Version: "1"
+              OutputArtifacts:
+                - Name: SourceOutput
+              Configuration:
+                Owner: !Ref GitUser
+                Repo: !Sub "${GitDomain}/${MultiRepoMicroFrontProductsRepo}"
+                Branch: !Ref Branch
+                OAuthToken: !Ref GitToken                
+        - Name: Build
+          Actions:
+            - Name: BuildAction
+              ActionTypeId:
+                Category: Build
+                Owner: AWS
+                Provider: CodeBuild
+                Version: "1"
+              InputArtifacts:
+                - Name: SourceOutput
+              OutputArtifacts:
+                - Name: BuildOutput
+              Configuration:
+                ProjectName: !Ref MultiRepoMicroFrontProductsCodeBuild                
+      ArtifactStore:
+        Type: S3
+        Location: !Ref MultiRepoMicroFrontProductsBucket    
+  MultiRepoMicroFrontOrdersCodePipeline:
+    Type: AWS::CodePipeline::Pipeline
+    Properties:
+      RoleArn: !GetAtt CodePipelineRole.Arn
+      Stages:
+        - Name: Source
+          Actions:
+            - Name: SourceAction
+              ActionTypeId:
+                Category: Source
+                Owner: ThirdParty
+                Provider: GitHub
+                Version: "1"
+              OutputArtifacts:
+                - Name: SourceOutput
+              Configuration:
+                Owner: !Ref GitUser
+                Repo: !Sub "${GitDomain}/${MultiRepoMicroFrontOrdersRepo}"
+                Branch: !Ref Branch
+                OAuthToken: !Ref GitToken                
+        - Name: Build
+          Actions:
+            - Name: BuildAction
+              ActionTypeId:
+                Category: Build
+                Owner: AWS
+                Provider: CodeBuild
+                Version: "1"
+              InputArtifacts:
+                - Name: SourceOutput
+              OutputArtifacts:
+                - Name: BuildOutput
+              Configuration:
+                ProjectName: !Ref MultiRepoMicroFrontOrdersCodeBuild                
+      ArtifactStore:
+        Type: S3
+        Location: !Ref MultiRepoMicroFrontOrdersBucket
+
+  # Bucket: para almecar archivos de shell y microfrontends
+  MultiRepoShellBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub "${SidLower}-${Branch}-${BucketName}-${AppNameLower}-${MultirepoShellNameLower}"
+      WebsiteConfiguration:
+        IndexDocument: index.html
+        ErrorDocument: error.html
+  MultiRepoMicroFrontAuthBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub "${SidLower}-${Branch}-${BucketName}-${AppNameLower}-microfront-${MultiRepoMicroFrontAuthNameLower}"
+      WebsiteConfiguration:
+        IndexDocument: index.html
+        ErrorDocument: error.html
+  MultiRepoMicroFrontDashboardBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub "${SidLower}-${Branch}-${BucketName}-${AppNameLower}-microfront-${MultiRepoMicroFrontDashboardNameLower}"
+      WebsiteConfiguration:
+        IndexDocument: index.html
+        ErrorDocument: error.html
+  MultiRepoMicroFrontProductsBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub "${SidLower}-${Branch}-${BucketName}-${AppNameLower}-microfront-${MultiRepoMicroFrontProductsNameLower}"
+      WebsiteConfiguration:
+        IndexDocument: index.html
+        ErrorDocument: error.html
+  MultiRepoMicroFrontOrdersBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub "${SidLower}-${Branch}-${BucketName}-${AppNameLower}-microfront-${MultiRepoMicroFrontOrdersNameLower}"
+      WebsiteConfiguration:
+        IndexDocument: index.html
+        ErrorDocument: error.html
+
+  # Cloudfront: para distribuir el contenido de los buckets
+  MicrofrontendsCloudfront:
+    Type: AWS::CloudFront::Distribution
+    Properties:
+      DistributionConfig:
+        Enabled: true
+        DefaultRootObject: index.html
+        Origins:
+          - DomainName: !GetAtt MultiRepoShellBucket.DomainName
+            Id: MultiRepoShellBucketOrigin
+            S3OriginConfig: {}
+          - DomainName: !GetAtt MultiRepoMicroFrontAuthBucket.DomainName
+            Id: MultiRepoMicroFrontAuthBucketOrigin
+            S3OriginConfig: {}
+          - DomainName: !GetAtt MultiRepoMicroFrontDashboardBucket.DomainName
+            Id: MultiRepoMicroFrontDashboardBucketOrigin
+            S3OriginConfig: {}
+          - DomainName: !GetAtt MultiRepoMicroFrontProductsBucket.DomainName
+            Id: MultiRepoMicroFrontProductsBucketOrigin
+            S3OriginConfig: {}
+          - DomainName: !GetAtt MultiRepoMicroFrontOrdersBucket.DomainName
+            Id: MultiRepoMicroFrontOrdersBucketOrigin
+            S3OriginConfig: {}
+        DefaultCacheBehavior:
+          TargetOriginId: MultiRepoShellBucketOrigin
+          ViewerProtocolPolicy: redirect-to-https
+          ForwardedValues:
+            QueryString: false
+            Cookies:
+              Forward: none
+        CacheBehaviors:
+          - PathPattern: "/mf-auto/*"
+            TargetOriginId: MultiRepoMicroFrontAuthBucketOrigin
+            ViewerProtocolPolicy: redirect-to-https
+            ForwardedValues:
+              QueryString: false
+              Cookies:
+                Forward: none
+          - PathPattern: "/mf-dashboard/*"
+            TargetOriginId: MultiRepoMicroFrontDashboardBucketOrigin
+            ViewerProtocolPolicy: redirect-to-https
+            ForwardedValues:
+              QueryString: false
+              Cookies:
+                Forward: none
+          - PathPattern: "/mf-products/*"
+            TargetOriginId: MultiRepoMicroFrontProductsBucketOrigin
+            ViewerProtocolPolicy: redirect-to-https
+            ForwardedValues:
+              QueryString: false
+              Cookies:
+                Forward: none
+          - PathPattern: "/mf-orders/*"
+            TargetOriginId: MultiRepoMicroFrontOrdersBucketOrigin
+            ViewerProtocolPolicy: redirect-to-https
+            ForwardedValues:
+              QueryString: false
+              Cookies:
+                Forward: none
